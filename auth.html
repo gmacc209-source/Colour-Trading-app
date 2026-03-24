@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colour Trading Log in & Sing up</title>
+    <style>
+        :root { --primary: #f39c12; --dark: #0a0a0a; --card: #1a1a1a; }
+        body { background: var(--dark); color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .auth-box { background: var(--card); padding: 30px; border-radius: 20px; width: 85%; max-width: 400px; border: 1px solid #333; }
+        h2 { text-align: center; color: var(--primary); }
+        input { width: 100%; padding: 15px; margin: 10px 0; border-radius: 12px; border: 1px solid #333; background: #111; color: white; box-sizing: border-box; outline: none; }
+        .btn { width: 100%; padding: 15px; border-radius: 12px; border: none; background: var(--primary); color: white; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .toggle { text-align: center; margin-top: 15px; font-size: 14px; color: #888; }
+        .toggle span { color: var(--primary); cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="auth-box">
+        <h2 id="title">Login</h2>
+        <input type="text" id="user-id" placeholder="ဖုန်းနံပါတ် (သို့မဟုတ်) အမည်">
+        <input type="password" id="user-pass" placeholder="Password (အနည်းဆုံး ၆ လုံး)">
+        <button class="btn" onclick="handleAuth()">အခုပဲ ဝင်မည်</button>
+        <div class="toggle"><p id="msg">အကောင့်မရှိသေးပါက <span onclick="toggleMode()">ဒီမှာဖွင့်ပါ</span></p></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        // onAuthStateChanged ကို ထပ်တိုးသွင်းထားသည်
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBkvWKijoSkjEpzn4JV3soIvzoB_YH2XBo",
+            authDomain: "colour-trading-app-5137c.firebaseapp.com",
+            projectId: "colour-trading-app-5137c",
+            storageBucket: "colour-trading-app-5137c.firebasestorage.app",
+            messagingSenderId: "912544588817",
+            appId: "1:912544588817:web:c6cce59030ec11adb7fdb0"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- ဒီအပိုင်းက Login ဝင်ပြီးသားလား စစ်ဆေးပေးမည့်အပိုင်း ဖြစ်သည် ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User က Login ဝင်ထားပြီးသားဆိုလျှင် index.html သို့ တိုက်ရိုက်ပို့မည်
+                window.location.href = "index.html";
+            }
+        });
+        // -------------------------------------------------------
+
+        let isLogin = true;
+
+        window.toggleMode = () => {
+            isLogin = !isLogin;
+            document.getElementById('title').innerText = isLogin ? "အကောင့်ဝင်ရန်" : "အကောင့်သစ်ဖွင့်ရန်";
+            document.getElementById('msg').innerHTML = isLogin ? `အကောင့်မရှိသေးပါက <span onclick="toggleMode()">ဒီမှာဖွင့်ပါ</span>` : `အကောင့်ရှိပြီးသားလား? <span onclick="toggleMode()">Login ဝင်ရန်</span>`;
+        };
+
+        window.handleAuth = async () => {
+            const uid = document.getElementById('user-id').value.trim();
+            const pass = document.getElementById('user-pass').value;
+            if(!uid || pass.length < 6) return alert("အချက်အလက် ပြည့်စုံအောင် ဖြည့်ပါ။");
+            const email = `${uid}@cupid.com`;
+
+            try {
+                if(isLogin) {
+                    await signInWithEmailAndPassword(auth, email, pass);
+                    // Login အောင်မြင်ရင် onAuthStateChanged က သူ့အလိုလို index.html ပို့ပေးပါလိမ့်မယ်
+                } else {
+                    const res = await createUserWithEmailAndPassword(auth, email, pass);
+                    
+                    // Firestore ထဲမှာ User data ရှိမရှိ အရင်စစ်မယ် (Overwrite မဖြစ်အောင်)
+                    const userDoc = await getDoc(doc(db, "users", res.user.uid));
+                    if(!userDoc.exists()){
+                        await setDoc(doc(db, "users", res.user.uid), {
+                            name: uid, 
+                            phone: uid, 
+                            balance: 1000, 
+                            uid: res.user.uid, 
+                            joinDate: new Date()
+                        });
+                        alert("အကောင့်ဖွင့်ခြင်း အောင်မြင်ပါသည်။ Bonus 1,000 Ks ရရှိပါပြီ။");
+                    }
+                }
+            } catch(e) { 
+                alert("အမှားအယွင်းရှိပါသည်- " + e.message); 
+            }
+        };
+    </script>
+</body>
+</html>

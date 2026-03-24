@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Colour Trade - 9 Colors Edition</title>
+    <style>
+        :root { --primary: #f39c12; --dark: #0a0a0a; --card: #1a1a1a; --success: #00c853; --danger: #ff3d00; --warning: #f1c40f; }
+        body { background: var(--dark); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding-bottom: 80px; }
+        
+        .page { display: none; padding: 20px; animation: fadeIn 0.3s; }
+        .active-page { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .balance-box { background: linear-gradient(135deg, #f39c12, #e67e22); padding: 30px; border-radius: 25px; text-align: center; margin-bottom: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        .timer-box { background: #161616; padding: 20px; border-radius: 20px; text-align: center; margin-bottom: 15px; border: 1px solid #333; position: relative; }
+        .timer { font-size: 55px; color: var(--danger); font-weight: bold; text-shadow: 0 0 15px rgba(255, 61, 0, 0.4); }
+        
+        .last-result-display { margin-top: 10px; font-size: 14px; color: #888; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .res-circle { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px; border: 2px solid #333; }
+        .res-circle-large { width: 70px; height: 70px; border-radius: 50%; margin: 15px auto; border: 3px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: bold; }
+
+        .result-history { display: flex; justify-content: center; gap: 8px; margin: 20px 0; flex-wrap: wrap; }
+        .dot { width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; border: 2px solid #222; }
+        
+        .n-green { background: #2ecc71; }
+        .n-red { background: #e74c3c; }
+        .n-violet { background: #9b59b6; }
+
+        .input-field { width: 100%; padding: 18px; margin: 10px 0; border-radius: 15px; background: #111; color: white; border: 1px solid #444; box-sizing: border-box; font-size: 16px; outline: none; }
+        .input-field:focus { border-color: var(--primary); }
+        
+        .color-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 10px; }
+        .bet-btn { padding: 18px 5px; border-radius: 15px; border: none; color: white; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 18px; box-shadow: 0 4px 0 rgba(0,0,0,0.3); }
+        .bet-btn:active { transform: scale(0.95); box-shadow: none; }
+        .bet-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(5px); justify-content: center; align-items: center; }
+        .modal-content { background: var(--card); padding: 30px; border-radius: 25px; text-align: center; width: 85%; max-width: 320px; border: 1px solid #333; animation: popScale 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popScale { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-win { border-top: 10px solid var(--success); }
+        .modal-loss { border-top: 10px solid var(--danger); }
+
+        .history-card { background: var(--card); padding: 18px; border-radius: 20px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 6px solid #444; }
+        .win { border-left-color: var(--success); } .loss { border-left-color: var(--danger); } .pending { border-left-color: var(--warning); }
+
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: rgba(17, 17, 17, 0.95); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222; backdrop-filter: blur(10px); z-index: 1000; }
+        .nav-item { color: #777; font-size: 12px; cursor: pointer; text-align: center; flex: 1; transition: 0.3s; }
+        .nav-item.active { color: var(--primary); transform: translateY(-3px); }
+        .nav-icon { font-size: 22px; margin-bottom: 4px; display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="home" class="page active-page">
+        <div class="balance-box">
+            <small style="opacity: 0.8;">လက်ကျန်ငွေ (MMK)</small>
+            <h1 id="balance" style="margin: 5px 0; font-size: 40px;">0</h1>
+        </div>
+        <div class="timer-box">
+            <div class="timer" id="timer">00:30</div>
+            <div class="last-result-display">
+                Last Result: <span id="last-res-dot" class="res-circle"></span>
+            </div>
+        </div>
+        <div class="result-history" id="global-dots"></div>
+        
+        <input type="number" id="bet-amount" placeholder="လောင်းမည့်ပမာဏ" class="input-field">
+        
+        <div class="color-grid">
+            <button class="bet-btn n-violet" onclick="placeBet(0)">0</button>
+            <button class="bet-btn n-green" onclick="placeBet(1)">1</button>
+            <button class="bet-btn n-red" onclick="placeBet(2)">2</button>
+            <button class="bet-btn n-green" onclick="placeBet(3)">3</button>
+            <button class="bet-btn n-red" onclick="placeBet(4)">4</button>
+            <button class="bet-btn n-violet" onclick="placeBet(5)">5</button>
+            <button class="bet-btn n-red" onclick="placeBet(6)">6</button>
+            <button class="bet-btn n-green" onclick="placeBet(7)">7</button>
+            <button class="bet-btn n-red" onclick="placeBet(8)">8</button>
+            <button class="bet-btn n-green" onclick="placeBet(9)">9</button>
+        </div>
+        
+        <p id="bet-status" style="text-align:center; color: var(--warning); margin-top:15px; font-weight: bold;"></p>
+    </div>
+
+    <div id="history" class="page"><h2>လောင်းကြေးမှတ်တမ်း</h2><div id="bet-history-content"></div></div>
+
+    <div id="deposit" class="page">
+        <h2>ငွေသွင်းရန်</h2>
+        <select id="dep-method" class="input-field" onchange="updateDepInfo()">
+            <option value="Kpay">Kpay (KBZ Pay)</option>
+            <option value="Wave">Wave Money</option>
+        </select>
+        <div id="dep-info-box" style="background:#1a1a1a; padding:20px; border-radius:15px; border: 2px dashed #f39c12; margin-bottom:20px; text-align: center;">
+            <span style="color: #888; font-size: 14px;">ငွေလွှဲရန် အမည်: </span><b style="color: white;">Thidar Oo</b><br>
+            <span style="color: #888; font-size: 14px;">ငွေလွှဲရန်နံပါတ်: </span><b id="dep-phone-display" style="color: #f39c12; font-size: 18px;">09 699 483 485</b>
+        </div>
+        <input type="number" id="dep-amount" class="input-field" placeholder="သွင်းမည့်ပမာဏ">
+        <input type="file" id="dep-file" class="input-field" accept="image/*">
+        <button class="bet-btn" style="background:var(--primary); width:100%" id="up-btn" onclick="submitDeposit()">ငွေသွင်းလွှာ ပို့မည်</button>
+        <h3 style="margin-top: 30px; border-bottom: 1px solid #333; padding-bottom: 10px;">ငွေသွင်းမှတ်တမ်း</h3>
+        <div id="dep-history-content"></div>
+    </div>
+
+    <div id="withdraw" class="page">
+        <h2>ငွေထုတ်ရန်</h2>
+        <select id="wd-method" class="input-field">
+            <option value="Kpay">KBZ Pay</option>
+            <option value="Wave">Wave Pay</option>
+        </select>
+        <input type="number" id="wd-amount" class="input-field" placeholder="ထုတ်မည့်ပမာဏ (Min: 2000)">
+        <input type="text" id="wd-phone" class="input-field" placeholder="ဖုန်းနံပါတ်">
+        <button class="bet-btn" style="background:var(--danger); width:100%; margin-top: 10px;" id="wd-btn" onclick="submitWithdraw()">ငွေထုတ်မည်</button>
+        <h3 style="margin-top: 30px; border-bottom: 1px solid #333; padding-bottom: 10px;">ငွေထုတ်မှတ်တမ်း</h3>
+        <div id="wd-history-content"></div>
+    </div>
+
+    <div id="profile" class="page">
+        <h2>ကျွန်ုပ်၏ Profile</h2>
+        <div style="background: var(--card); padding: 25px; border-radius: 20px; text-align: center; border: 1px solid #333;">
+            <div style="font-size: 60px; margin-bottom: 10px;">👤</div>
+            <h3 id="profile-email" style="color: var(--primary); margin: 5px 0;">Loading...</h3>
+            <p id="profile-id" style="font-size: 11px; color: #555;"></p>
+            <button class="bet-btn" style="background:#333; width:100%; margin-top:20px" onclick="logout()">Logout (ထွက်ရန်)</button>
+        </div>
+    </div>
+
+    <div id="resultModal" class="modal">
+        <div id="modalBody" class="modal-content">
+            <h2 id="modalTitle">RESULT</h2>
+            <div id="modalResDot" class="res-circle-large"></div>
+            <p id="modalMsg" style="font-size: 18px; font-weight: bold;"></p>
+            <button class="bet-btn" style="background: var(--primary); width: 100%; margin-top: 20px;" onclick="closeModal()">အိုကေ</button>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="showPage('home', this)"><span class="nav-icon">🏠</span>ပင်မ</div>
+        <div class="nav-item" onclick="showPage('history', this)"><span class="nav-icon">📝</span>Betမှတ်တမ်း</div>
+        <div class="nav-item" onclick="showPage('deposit', this)"><span class="nav-icon">💰</span>ငွေသွင်း</div>
+        <div class="nav-item" onclick="showPage('withdraw', this)"><span class="nav-icon">💸</span>ငွေထုတ်</div>
+        <div class="nav-item" onclick="showPage('profile', this)"><span class="nav-icon">👤</span>ပရိုဖိုင်</div>
+    </nav>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, collection, addDoc, query, where, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = { apiKey: "AIzaSyBkvWKijoSkjEpzn4JV3soIvzoB_YH2XBo", authDomain: "colour-trading-app-5137c.firebaseapp.com", projectId: "colour-trading-app-5137c", storageBucket: "colour-trading-app-5137c.firebasestorage.app", messagingSenderId: "912544588817", appId: "1:912544588817:web:c6cce59030ec11adb7fdb0" };
+        const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app);
+
+        let userUID = null, currentBalance = 0, timeLeft = 30, myBetNum = null, myBetAmount = 0, adminResult = "";
+
+        window.showPage = (id, el) => {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+            document.getElementById(id).classList.add('active-page');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+        };
+        window.closeModal = () => document.getElementById('resultModal').style.display = 'none';
+        window.logout = () => signOut(auth).then(() => window.location.href = "auth.html");
+
+        const getNumColor = n => (n==0 || n==5) ? 'violet' : (n%2==0 ? 'red' : 'green');
+
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                userUID = user.uid;
+                document.getElementById('profile-email').innerText = user.email;
+                document.getElementById('profile-id').innerText = `ID: ${user.uid}`;
+                onSnapshot(doc(db, "users", userUID), d => { if(d.exists()) { currentBalance = d.data().balance; document.getElementById('balance').innerText = currentBalance.toLocaleString(); }});
+                loadGlobalDots(); loadBetHistory(); loadDepHistory(); loadWdHistory();
+            } else { window.location.href = "auth.html"; }
+        });
+
+        setInterval(() => {
+            if (timeLeft > 0) { timeLeft--; document.getElementById('timer').innerText = `00:${timeLeft < 10 ? '0'+timeLeft : timeLeft}`; }
+            else { processResult(); timeLeft = 30; }
+        }, 1000);
+
+        onSnapshot(doc(db, "game_settings", "current_round"), d => { if(d.exists()) adminResult = d.data().manual_result; });
+
+        async function processResult() {
+            let winNum = (adminResult !== "" && adminResult !== undefined) ? parseInt(adminResult) : Math.floor(Math.random()*10);
+            let winColor = getNumColor(winNum);
+            await addDoc(collection(db, "game_results"), { winNum, winColor, timestamp: new Date() });
+
+            if (myBetNum !== null) {
+                let isWin = (myBetNum === winNum);
+                // နိုင်လျှင် ငွေ ၂ ဆ ပေါင်းပေးရန် ပြောင်းလဲလိုက်သည် (x2)
+                if (isWin) await updateDoc(doc(db, "users", userUID), { balance: currentBalance + (myBetAmount * 2) });
+                await addDoc(collection(db, "user_history"), { uid: userUID, betNum: myBetNum, amount: myBetAmount, result: isWin ? "Win" : "Loss", winNum, timestamp: new Date() });
+                
+                document.getElementById('modalResDot').className = `res-circle-large n-${winColor}`;
+                document.getElementById('modalResDot').innerText = winNum;
+                document.getElementById('modalTitle').innerText = isWin ? "🎉 WINNER!" : "❌ BETTER LUCK";
+                document.getElementById('modalTitle').style.color = isWin ? "var(--success)" : "var(--danger)";
+                document.getElementById('modalBody').className = `modal-content ${isWin ? 'modal-win' : 'modal-loss'}`;
+                // Modal စာသားကို x2 သို့ ပြောင်းလဲသည်
+                document.getElementById('modalMsg').innerText = isWin ? "သင် နိုင်သွားပါပြီ (x2)!" : "သင် ရှုံးသွားပါပြီ။";
+                document.getElementById('resultModal').style.display = 'flex';
+            }
+            myBetNum = null; myBetAmount = 0; document.getElementById('bet-status').innerText = "";
+        }
+
+        window.placeBet = async num => {
+            const amountInput = document.getElementById('bet-amount').value;
+            const amount = parseInt(amountInput);
+            if (!amount || amount < 100) return alert("အနည်းဆုံး ၁၀၀ လောင်းပေးပါ");
+            if (amount > currentBalance) return alert("လက်ကျန်ငွေ မလုံလောက်ပါ");
+            if (myBetNum !== null) return alert("လောင်းပြီးပါပြီ");
+
+            try {
+                await updateDoc(doc(db, "users", userUID), { balance: currentBalance - amount });
+                await addDoc(collection(db, "active_bets"), { 
+                    uid: userUID, 
+                    num: num, 
+                    amount: amount, 
+                    timestamp: new Date() 
+                });
+                myBetNum = num; 
+                myBetAmount = amount;
+                document.getElementById('bet-status').innerText = `နံပါတ် (${num}) မှာ ${amount} Ks လောင်းထားသည်`;
+            } catch (e) { alert("Error: " + e.message); }
+        };
+
+        function loadGlobalDots() {
+            onSnapshot(query(collection(db, "game_results"), orderBy("timestamp", "desc"), limit(12)), snap => {
+                const dc = document.getElementById('global-dots'); const lastDot = document.getElementById('last-res-dot');
+                dc.innerHTML = "";
+                if (!snap.empty) { 
+                    let last = snap.docs[0].data();
+                    lastDot.className = `res-circle n-${last.winColor}`; 
+                    lastDot.innerText = last.winNum;
+                }
+                snap.forEach(d => { 
+                    let v = d.data();
+                    dc.innerHTML += `<div class="dot n-${v.winColor}">${v.winNum}</div>`; 
+                });
+            });
+        }
+
+        window.updateDepInfo = () => {
+            const method = document.getElementById('dep-method').value;
+            const display = document.getElementById('dep-phone-display');
+            display.innerText = (method === "Kpay") ? "09 699 483 495" : "09 660 362 582";
+        };
+
+        const toBase64 = f => new Promise((res, rej) => { const r = new FileReader(); r.readAsDataURL(f); r.onload = () => res(r.result); r.onerror = e => rej(e); });
+        window.submitDeposit = async () => {
+            const amount = document.getElementById('dep-amount').value; const file = document.getElementById('dep-file').files[0];
+            const method = document.getElementById('dep-method').value;
+            if(!amount || !file) return alert("အချက်အလက်ပြည့်စုံစွာ ဖြည့်ပါ");
+            const btn = document.getElementById('up-btn'); btn.disabled = true; btn.innerText = "ခဏစောင့်ပါ...";
+            try { 
+                const b64 = await toBase64(file); 
+                await addDoc(collection(db, "deposits"), { uid: userUID, userName: auth.currentUser.email.split('@')[0], amount: parseInt(amount), method, screenshot: b64, status: "pending", timestamp: new Date() }); 
+                alert("အောင်မြင်ပါသည်"); 
+            } catch (e) { alert(e.message); }
+            btn.disabled = false; btn.innerText = "ငွေသွင်းလွှာ ပို့မည်";
+        };
+
+        window.submitWithdraw = async () => {
+            const amount = parseInt(document.getElementById('wd-amount').value); const phone = document.getElementById('wd-phone').value;
+            const method = document.getElementById('wd-method').value;
+            if(!amount || amount < 2000 || amount > currentBalance) return alert("အနည်းဆုံးငွေ၂၀၀၀ကျပ်မှစတင်ထုတ်ပါ");
+            await updateDoc(doc(db, "users", userUID), { balance: currentBalance - amount });
+            await addDoc(collection(db, "withdraws"), { uid: userUID, amount, phone, method, status: "pending", timestamp: new Date() });
+            alert("ပို့ပြီးပါပြီ");
+        };
+
+        function loadBetHistory() { 
+            onSnapshot(query(collection(db, "user_history"), where("uid", "==", userUID), orderBy("timestamp", "desc"), limit(10)), snap => {
+                const c = document.getElementById('bet-history-content'); c.innerHTML = "";
+                snap.forEach(d => { const v = d.data(); c.innerHTML += `<div class="history-card ${v.result==='Win'?'win':'loss'}"><div><b>နံပါတ် (${v.betNum})</b><br><small>Res: ${v.winNum}</small></div><div style="text-align:right"><b>${v.result==='Win'?'+':'-'}${v.amount}</b></div></div>`; });
+            });
+        }
+        function loadDepHistory() { 
+            onSnapshot(query(collection(db, "deposits"), where("uid", "==", userUID), orderBy("timestamp", "desc"), limit(5)), snap => { 
+                const c = document.getElementById('dep-history-content'); c.innerHTML = ""; 
+                snap.forEach(d => { const v = d.data(); c.innerHTML += `<div class="history-card"><div><b>${v.amount} Ks</b></div><div>${v.status}</div></div>`; }); 
+            });
+        }
+        function loadWdHistory() { 
+            onSnapshot(query(collection(db, "withdraws"), where("uid", "==", userUID), orderBy("timestamp", "desc"), limit(5)), snap => { 
+                const c = document.getElementById('wd-history-content'); c.innerHTML = ""; 
+                snap.forEach(d => { const v = d.data(); c.innerHTML += `<div class="history-card"><div><b>${v.amount} MMK</b></div><div>${v.status}</div></div>`; }); 
+            });
+        }
+    </script>
+</body>
+</html>
